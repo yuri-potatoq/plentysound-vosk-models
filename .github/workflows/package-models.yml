@@ -1,0 +1,46 @@
+name: Package Models
+
+on:
+  workflow_dispatch:
+
+# Add or remove model folder names here
+env:
+  MODELS: >-
+    vosk-model-small-pt-0.3
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install zstd
+        run: sudo apt-get install -y zstd
+
+      - name: Package folders in parallel with zstd
+        run: |
+          pids=()
+          for dir in $MODELS; do
+            if [ ! -d "$dir" ]; then
+              echo "::error::Folder '$dir' does not exist"
+              exit 1
+            fi
+            echo "Packaging $dir -> ${dir}.tar.zst (using $(nproc) cores)"
+            tar --use-compress-program="zstd -T0" -cf "${dir}.tar.zst" "$dir" &
+            pids+=($!)
+          done
+
+          for pid in "${pids[@]}"; do
+            wait "$pid" || exit 1
+          done
+
+          echo "All archives created:"
+          ls -lh *.tar.zst
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: models
+          path: "*.tar.zst"
+          retention-days: 90
