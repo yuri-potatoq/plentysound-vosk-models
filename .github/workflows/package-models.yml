@@ -49,4 +49,5 @@ jobs:
           gh release create "$tag" \
             --title "Models $tag" \
             --notes "Compressed model archives" \
+            --exclude-source-archives \
             *.tar.zst
