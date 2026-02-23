@@ -8,6 +8,9 @@ env:
   MODELS: >-
     vosk-model-small-pt-0.3
 
+permissions:
+  contents: write
+
 jobs:
   package:
     runs-on: ubuntu-latest
@@ -18,7 +21,7 @@ jobs:
       - name: Install zstd
         run: sudo apt-get install -y zstd
 
-      - name: Package folders in parallel with zstd
+      - name: Package models
         run: |
           pids=()
           for dir in $MODELS; do
@@ -38,9 +41,12 @@ jobs:
           echo "All archives created:"
           ls -lh *.tar.zst
 
-      - name: Upload model artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: models
-          path: "*.tar.zst"
-          retention-days: 90
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="models-$(date +%Y%m%d-%H%M%S)"
+          gh release create "$tag" \
+            --title "Models $tag" \
+            --notes "Compressed model archives" \
+            *.tar.zst
